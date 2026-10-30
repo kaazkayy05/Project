@@ -1,5 +1,7 @@
 extends Node3D
 
+var grave_positions: Array[Vector3] = []
+
 
 func box(at: Vector3, size: Vector3, color: Color,
 		solid: bool = true) -> void:
@@ -50,9 +52,11 @@ func _ready() -> void:
 
 	for x in [-10.0, -6.0, 6.0, 10.0]:
 		for z in [-10.0, -5.0, 6.0, 11.0]:
-			box(Vector3(x, 0.025, z + 0.8),
+			var grave_z: float = -2.0 if x == 10.0 and z == -10.0 else z
+			grave_positions.append(Vector3(x, 0, grave_z))
+			box(Vector3(x, 0.025, grave_z + 0.8),
 				Vector3(1.5, 0.04, 2.4), Color(0.20, 0.16, 0.12), false)
-			box(Vector3(x, 0.6, z), Vector3(0.9, 1.2, 0.25), stone)
+			box(Vector3(x, 0.6, grave_z), Vector3(0.9, 1.2, 0.25), stone)
 
 	# Solid shed with a visible recessed doorway.
 	box(Vector3(11, 1.4, -13), Vector3(5, 2.8, 0.3), wood)
