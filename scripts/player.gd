@@ -1,5 +1,8 @@
 extends CharacterBody3D
 
+const Sweeping = preload("res://scripts/sweeping.gd")
+const BROOM_REST := Vector3(0.48, -0.65, -1.5)
+
 var local := false
 var tool := 0
 var lamp_on := true
@@ -7,12 +10,17 @@ var look_yaw := 0.0
 var look_pitch := 0.0
 var wish := Vector2.ZERO
 var input_age := 0.0
+var has_broom := false
+var interact_held := false
+var is_sweeping := false
+var sweep_time := 0.0
 
 var head := Node3D.new()
 var camera := Camera3D.new()
 var body := Node3D.new()
 var flashlight := Node3D.new()
 var shovel := Node3D.new()
+var broom := Node3D.new()
 var beam := SpotLight3D.new()
 
 
@@ -66,7 +74,34 @@ func _ready() -> void:
 		Vector3(0.06, 1.0, 0.06), Color(0.38, 0.24, 0.12))
 	piece(shovel, Vector3(0.32, -0.85, -0.6),
 		Vector3(0.25, 0.3, 0.06), Color(0.45, 0.47, 0.49))
+	head.add_child(broom)
+	broom.position = BROOM_REST
+	Sweeping.make_broom(broom)
 	apply_visuals()
+
+
+func _process(delta: float) -> void:
+	var active := is_sweeping and has_broom and tool == 2
+	if local:
+		active = (
+			active
+			and Input.is_action_pressed("interact")
+			and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
+			and get_window().has_focus()
+		)
+
+	var target_position := BROOM_REST
+	var target_angle := 0.0
+	if active:
+		var stroke := sin(sweep_time * TAU * 1.2)
+		target_position.x += stroke * 0.14
+		target_position.y += sin(sweep_time * TAU * 2.4) * 0.025
+		target_angle = stroke * deg_to_rad(8.0)
+
+	var blend := minf(delta * 16.0, 1.0)
+	broom.position = broom.position.lerp(target_position, blend)
+	broom.rotation.y = lerp_angle(
+		broom.rotation.y, target_angle, blend)
 
 
 func apply_visuals() -> void:
@@ -74,6 +109,7 @@ func apply_visuals() -> void:
 	head.rotation.x = look_pitch
 	flashlight.visible = tool == 0
 	shovel.visible = tool == 1
+	broom.visible = tool == 2 and has_broom
 	beam.visible = tool == 0 and lamp_on
 
 
@@ -96,11 +132,14 @@ func simulate(delta: float, active: bool) -> void:
 
 
 func state() -> Array:
-	return [position, look_yaw, look_pitch, tool, lamp_on]
+	return [position, look_yaw, look_pitch, tool, lamp_on, has_broom]
 
 
 func receive(data: Array) -> void:
 	position = data[0]
+	has_broom = data[5]
+	if tool == 2 and not has_broom:
+		tool = 0
 	if not local:
 		look_yaw = data[1]
 		look_pitch = data[2]
